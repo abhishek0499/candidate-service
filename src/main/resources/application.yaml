@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: candidate-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/candidatedb
+server:
+  port: 8083
+jwt:
+  secret: am9pbmdpcmxhbmltYWxzaG9lYmxpbmRwbGFudGJlbGxjdXJyZW50YWRkaXRpb253YW4
