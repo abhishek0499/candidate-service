@@ -18,18 +18,20 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequiredArgsConstructor
 public class CandidateController {
     private final AttemptService attemptService;
+    private final com.abhishek.candidateService.client.AdminClient adminClient;
 
     @GetMapping("/tests")
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<?> listAssignedTests(HttpServletRequest request) {
         String userId = (String) request.getAttribute("principalId");
-        // TODO: call AdminClient to fetch tests assigned to this user
-        return ResponseEntity.ok("[]");
+        String token = extractBearer(request);
+        return ResponseEntity.ok(adminClient.getAssignedTests(userId, token));
     }
 
     @PostMapping("/tests/start")
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<Attempt> startAttempt(@Valid @RequestBody StartAttemptRequest req, HttpServletRequest request) {
+    public ResponseEntity<Attempt> startAttempt(@Valid @RequestBody StartAttemptRequest req,
+            HttpServletRequest request) {
         String userId = (String) request.getAttribute("principalId");
         String bearer = extractBearer(request);
         Attempt a = attemptService.startAttempt(userId, req.getTestId(), bearer);
@@ -38,7 +40,8 @@ public class CandidateController {
 
     @PostMapping("/attempts/{attemptId}/answer")
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<Attempt> saveAnswer(@PathVariable String attemptId, @Valid @RequestBody SaveAnswerRequest req, HttpServletRequest request) {
+    public ResponseEntity<Attempt> saveAnswer(@PathVariable String attemptId, @Valid @RequestBody SaveAnswerRequest req,
+            HttpServletRequest request) {
         String userId = (String) request.getAttribute("principalId");
         Attempt a = attemptService.saveAnswer(userId, attemptId, req.getQuestionId(), req.getOptionId());
         return ResponseEntity.ok(a);
@@ -55,8 +58,10 @@ public class CandidateController {
 
     private String extractBearer(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
-        if (header == null) return null;
-        if (header.startsWith("Bearer ")) return header.substring(7);
+        if (header == null)
+            return null;
+        if (header.startsWith("Bearer "))
+            return header.substring(7);
         return header;
     }
 }

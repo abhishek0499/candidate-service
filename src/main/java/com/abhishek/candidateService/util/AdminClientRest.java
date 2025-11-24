@@ -23,90 +23,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminClientRest {
 
-
     private final RestClient adminRestClient;
     private final Random random = new Random();
-
-/*    public TestDTO fetchTest(String testId) {
-        try {
-            return adminRestClient.get()
-                    .uri("/admin/tests/{id}", testId)
-                    .retrieve()
-                    .body(TestDTO.class);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-
-    public List<QuestionSnapshot> fetchQuestionsForTest(TestDTO test) {
-        if (test == null) return List.of();
-
-        List<QuestionDTO> questions = new ArrayList<>();
-
-        // 1. If explicit question IDs exist → fetch questions in bulk
-        if (test.questionIds != null && !test.questionIds.isEmpty()) {
-            try {
-                QuestionDTO[] arr = adminRestClient.post()
-                        .uri("/admin/questions/bulk")
-                        .body(test.questionIds)
-                        .retrieve()
-                        .body(QuestionDTO[].class);
-
-                if (arr != null) {
-                    questions.addAll(Arrays.asList(arr));
-                }
-            } catch (Exception ex) {
-                throw new RuntimeException("Failed to fetch questions by IDs", ex);
-            }
-        }
-        // 2. Else fetch questions by categories
-        else if (test.categoryIds != null && !test.categoryIds.isEmpty()) {
-
-            for (String categoryId : test.categoryIds) {
-                try {
-                    QuestionDTO[] byCat = adminRestClient.get()
-                            .uri(uri -> uri.path("/admin/questions")
-                                    .queryParam("categoryId", categoryId)
-                                    .build())
-                            .retrieve()
-                            .body(QuestionDTO[].class);
-
-                    if (byCat != null) {
-                        questions.addAll(Arrays.asList(byCat));
-                    }
-
-                } catch (Exception ignored) {
-                    // ignore category fetch failure (POC behavior)
-                }
-            }
-        }
-
-        // 3. Map QuestionDTO → QuestionSnapshot with randomized options
-        return questions.stream().map(q -> {
-            QuestionSnapshot snap = new QuestionSnapshot();
-            snap.setQuestionId(q.id);
-            snap.setText(q.text);
-
-            // null-safe options list
-            List<OptionDTO> optList =
-                    (q.options == null ? List.of() : q.options);
-
-            List<Option> opts = optList.stream()
-                    .map(o -> {
-                        Option op = new Option();
-                        op.setId(o.id);
-                        op.setText(o.text);
-                        return op;
-                    })
-                    .collect(Collectors.toList());
-
-            Collections.shuffle(opts, random);
-            snap.setOptions(opts);
-
-            return snap;
-        }).collect(Collectors.toList());
-    }*/
 
     /**
      * Fetch test from Admin Service. If not found returns null.
@@ -115,28 +33,34 @@ public class AdminClientRest {
     public TestDTO fetchTest(String testId, String bearerToken) {
         try {
             var req = adminRestClient.get().uri("/admin/tests/{id}", testId);
-            if (bearerToken != null) req = req.headers(h -> h.setBearerAuth(bearerToken));
+            if (bearerToken != null)
+                req = req.headers(h -> h.setBearerAuth(bearerToken));
             return req.retrieve().body(TestDTO.class);
         } catch (RestClientException ex) {
+            ex.printStackTrace();
             return null;
         }
     }
 
     /**
-     * Fetch questions for a test and return a randomized snapshot per question suitable for Attempt.QuestionSnapshot.
+     * Fetch questions for a test and return a randomized snapshot per question
+     * suitable for Attempt.QuestionSnapshot.
      * Accepts bearer token to forward.
      */
     public List<QuestionSnapshot> fetchQuestionsForTest(TestDTO test, String bearerToken) {
-        if (test == null) return List.of();
+        if (test == null)
+            return List.of();
         List<QuestionDTO> questions = new ArrayList<>();
 
         // Bulk fetch by IDs (preferred)
         if (test.questionIds != null && !test.questionIds.isEmpty()) {
             try {
                 var req = adminRestClient.post().uri("/admin/questions/bulk");
-                if (bearerToken != null) req = req.headers(h -> h.setBearerAuth(bearerToken));
+                if (bearerToken != null)
+                    req = req.headers(h -> h.setBearerAuth(bearerToken));
                 QuestionDTO[] arr = req.body(test.questionIds).retrieve().body(QuestionDTO[].class);
-                if (arr != null) questions.addAll(Arrays.asList(arr));
+                if (arr != null)
+                    questions.addAll(Arrays.asList(arr));
             } catch (Exception ex) {
                 throw new RuntimeException("Failed to fetch questions by IDs", ex);
             }
@@ -145,10 +69,13 @@ public class AdminClientRest {
         else if (test.categoryIds != null && !test.categoryIds.isEmpty()) {
             for (String categoryId : test.categoryIds) {
                 try {
-                    var req = adminRestClient.get().uri(uri -> uri.path("/admin/questions").queryParam("categoryId", categoryId).build());
-                    if (bearerToken != null) req = req.headers(h -> h.setBearerAuth(bearerToken));
+                    var req = adminRestClient.get()
+                            .uri(uri -> uri.path("/admin/questions").queryParam("categoryId", categoryId).build());
+                    if (bearerToken != null)
+                        req = req.headers(h -> h.setBearerAuth(bearerToken));
                     QuestionDTO[] byCat = req.retrieve().body(QuestionDTO[].class);
-                    if (byCat != null) questions.addAll(Arrays.asList(byCat));
+                    if (byCat != null)
+                        questions.addAll(Arrays.asList(byCat));
                 } catch (Exception ignored) {
                     // ignore category fetch failures for now (POC)
                 }

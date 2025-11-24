@@ -7,6 +7,8 @@ import com.abhishek.candidateService.repository.AttemptRepository;
 import com.abhishek.candidateService.util.AdminClientRest;
 import com.abhishek.candidateService.util.ResultsClientRest;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,21 +22,26 @@ public class AttemptService {
     private final AttemptRepository attemptRepository;
     private final AdminClientRest adminClient; // Rest client
     private final ResultsClientRest resultsClient; // Rest client
+    private static final Logger logger = LoggerFactory.getLogger(AttemptService.class);
 
     // startAttempt now accepts bearer token forwarded from controller
     public Attempt startAttempt(String candidateId, String testId, String bearerToken) {
         var test = adminClient.fetchTest(testId, bearerToken);
-        if (test == null) throw new NoSuchElementException("Test not found");
+        if (test == null)
+            throw new NoSuchElementException("Test not found");
+        logger.info(test.questionIds.toString());
 
         if (test.assignedCandidates == null || !test.assignedCandidates.contains(candidateId)) {
             throw new IllegalArgumentException("Candidate not assigned to this test");
         }
 
-        if (!test.active) throw new IllegalArgumentException("Test is not active");
+        if (!test.active)
+            throw new IllegalArgumentException("Test is not active");
 
         var existing = attemptRepository.findByCandidateIdAndStatus(candidateId, Status.IN_PROGRESS);
         boolean sameTestInProgress = existing.stream().anyMatch(a -> testId.equals(a.getTestId()));
-        if (sameTestInProgress) throw new IllegalArgumentException("An attempt is already in progress for this test");
+        if (sameTestInProgress)
+            throw new IllegalArgumentException("An attempt is already in progress for this test");
 
         var questions = adminClient.fetchQuestionsForTest(test, bearerToken);
 
@@ -50,18 +57,25 @@ public class AttemptService {
     }
 
     public Attempt saveAnswer(String candidateId, String attemptId, String questionId, String optionId) {
-        Attempt att = attemptRepository.findByIdAndCandidateId(attemptId, candidateId).orElseThrow(() -> new NoSuchElementException("Attempt not found"));
-        if (att.getStatus() != Status.IN_PROGRESS) throw new IllegalArgumentException("Attempt not in progress");
+        Attempt att = attemptRepository.findByIdAndCandidateId(attemptId, candidateId)
+                .orElseThrow(() -> new NoSuchElementException("Attempt not found"));
+        if (att.getStatus() != Status.IN_PROGRESS)
+            throw new IllegalArgumentException("Attempt not in progress");
 
-        var ans = new Answer(); ans.setQuestionId(questionId); ans.setOptionId(optionId); ans.setAnsweredAt(Instant.now());
+        var ans = new Answer();
+        ans.setQuestionId(questionId);
+        ans.setOptionId(optionId);
+        ans.setAnsweredAt(Instant.now());
         att.getAnswers().removeIf(a -> a.getQuestionId().equals(questionId));
         att.getAnswers().add(ans);
         return attemptRepository.save(att);
     }
 
     public Attempt submitAttempt(String candidateId, String attemptId, String bearerToken) {
-        Attempt att = attemptRepository.findByIdAndCandidateId(attemptId, candidateId).orElseThrow(() -> new NoSuchElementException("Attempt not found"));
-        if (att.getStatus() != Status.IN_PROGRESS) throw new IllegalArgumentException("Attempt not in progress");
+        Attempt att = attemptRepository.findByIdAndCandidateId(attemptId, candidateId)
+                .orElseThrow(() -> new NoSuchElementException("Attempt not found"));
+        if (att.getStatus() != Status.IN_PROGRESS)
+            throw new IllegalArgumentException("Attempt not in progress");
 
         Instant now = Instant.now();
         Instant deadline = att.getStartedAt().plusSeconds(att.getTimeLimitMinutes() * 60L);
