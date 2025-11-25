@@ -17,90 +17,99 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.abhishek.candidateService.constant.Constants.*;
+
 @Slf4j
 @RestController
-@RequestMapping("/candidate")
+@RequestMapping(ENDPOINT_CANDIDATE)
 @RequiredArgsConstructor
 public class CandidateController {
     private final AttemptService attemptService;
 
-    @GetMapping("/tests")
+    @GetMapping(ENDPOINT_TESTS)
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<ApiResponse<List<TestWithStatusDTO>>> listAssignedTests(HttpServletRequest request) {
         String candidateId = (String) request.getAttribute("principalId");
         String bearerToken = extractBearer(request);
 
-        log.info("GET /candidate/tests - Candidate: {}", candidateId);
+        log.info("GET {}{} - Candidate: {}", ENDPOINT_CANDIDATE, ENDPOINT_TESTS, candidateId);
 
         List<TestWithStatusDTO> tests = attemptService.getTestsWithStatus(candidateId, bearerToken);
 
         log.debug("Returning {} tests for candidate: {}", tests.size(), candidateId);
         return ResponseEntity.ok(ApiResponse.<List<TestWithStatusDTO>>builder()
-                .message("Assigned tests fetched successfully")
+                .message(MSG_TESTS_FETCHED)
                 .data(tests)
                 .build());
     }
 
-    @PostMapping("/tests/start")
+    @PostMapping(ENDPOINT_TESTS + ENDPOINT_START)
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<ApiResponse<Attempt>> startAttempt(@Valid @RequestBody StartAttemptRequest req,
-            HttpServletRequest request) {
-        String candidateId = (String) request.getAttribute("principalId");
-        String bearerToken = extractBearer(request);
+    public ResponseEntity<ApiResponse<Attempt>> startAttempt(@Valid @RequestBody StartAttemptRequest request,
+            HttpServletRequest servletRequest) {
+        String candidateId = (String) servletRequest.getAttribute("principalId");
+        String bearerToken = extractBearer(servletRequest);
 
-        log.info("POST /candidate/tests/start - Candidate: {}, Test: {}", candidateId, req.getTestId());
+        log.info("POST {}{}{} - Candidate: {}, Test: {}",
+                ENDPOINT_CANDIDATE, ENDPOINT_TESTS, ENDPOINT_START, candidateId, request.getTestId());
 
-        Attempt attempt = attemptService.startAttempt(candidateId, req.getTestId(), bearerToken);
+        Attempt attempt = attemptService.startAttempt(candidateId, request.getTestId(), bearerToken);
 
-        log.info("Attempt started successfully: {}", attempt.getId());
+        log.info("Attempt started successfully - ID: {}, Candidate: {}", attempt.getId(), candidateId);
         return ResponseEntity.ok(ApiResponse.<Attempt>builder()
-                .message("Attempt started successfully")
+                .message(MSG_ATTEMPT_STARTED)
                 .data(attempt)
                 .build());
     }
 
-    @PostMapping("/attempts/{attemptId}/answer")
+    @PostMapping(ENDPOINT_ATTEMPTS + "/{attemptId}" + ENDPOINT_ANSWER)
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<ApiResponse<Attempt>> saveAnswer(@PathVariable String attemptId,
-            @Valid @RequestBody SaveAnswerRequest req,
-            HttpServletRequest request) {
-        String candidateId = (String) request.getAttribute("principalId");
+            @Valid @RequestBody SaveAnswerRequest request,
+            HttpServletRequest servletRequest) {
+        String candidateId = (String) servletRequest.getAttribute("principalId");
 
-        log.debug("POST /candidate/attempts/{}/answer - Candidate: {}, Question: {}",
-                attemptId, candidateId, req.getQuestionId());
+        log.debug("POST {}{}/{}{} - Candidate: {}, Question: {}",
+                ENDPOINT_CANDIDATE, ENDPOINT_ATTEMPTS, attemptId, ENDPOINT_ANSWER,
+                candidateId, request.getQuestionId());
 
-        Attempt attempt = attemptService.saveAnswer(candidateId, attemptId, req.getQuestionId(), req.getOptionId());
+        Attempt attempt = attemptService.saveAnswer(candidateId, attemptId, request.getQuestionId(),
+                request.getOptionId());
 
         return ResponseEntity.ok(ApiResponse.<Attempt>builder()
-                .message("Answer saved successfully")
+                .message(MSG_ANSWER_SAVED)
                 .data(attempt)
                 .build());
     }
 
-    @PostMapping("/attempts/submit")
+    @PostMapping(ENDPOINT_ATTEMPTS + ENDPOINT_SUBMIT)
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<ApiResponse<Attempt>> submitAttempt(@Valid @RequestBody SubmitAttemptRequest req,
-            HttpServletRequest request) {
-        String candidateId = (String) request.getAttribute("principalId");
-        String bearerToken = extractBearer(request);
+    public ResponseEntity<ApiResponse<Attempt>> submitAttempt(@Valid @RequestBody SubmitAttemptRequest request,
+            HttpServletRequest servletRequest) {
+        String candidateId = (String) servletRequest.getAttribute("principalId");
+        String bearerToken = extractBearer(servletRequest);
 
-        log.info("POST /candidate/attempts/submit - Candidate: {}, Attempt: {}", candidateId, req.getAttemptId());
+        log.info("POST {}{}{} - Candidate: {}, Attempt: {}",
+                ENDPOINT_CANDIDATE, ENDPOINT_ATTEMPTS, ENDPOINT_SUBMIT, candidateId, request.getAttemptId());
 
-        Attempt attempt = attemptService.submitAttempt(candidateId, req.getAttemptId(), bearerToken);
+        Attempt attempt = attemptService.submitAttempt(candidateId, request.getAttemptId(), bearerToken);
 
-        log.info("Attempt submitted successfully: {}, Score: {}", attempt.getId(), attempt.getScore());
+        log.info("Attempt submitted successfully - ID: {}, Candidate: {}, Score: {}",
+                attempt.getId(), candidateId, attempt.getScore());
         return ResponseEntity.ok(ApiResponse.<Attempt>builder()
-                .message("Attempt submitted successfully")
+                .message(MSG_ATTEMPT_SUBMITTED)
                 .data(attempt)
                 .build());
     }
 
     private String extractBearer(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
-        if (header == null)
+        if (header == null) {
             return null;
-        if (header.startsWith("Bearer "))
+        }
+        if (header.startsWith("Bearer ")) {
             return header.substring(7);
+        }
         return header;
     }
 }
