@@ -7,4 +7,4 @@ spring:
 server:
   port: 8083
 jwt:
-  secret: am9pbmdpcmxhbmltYWxzaG9lYmxpbmRwbGFudGJlbGxjdXJyZW50YWRkaXRpb253YW4
+  secret: am9pbmdpcmxhbmltYWxzaG9lYmxpbmRwbGFudGJlbGxjdXJyZW50YWRkaXRpb253YW4=
