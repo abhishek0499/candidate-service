@@ -13,7 +13,6 @@ public class ResultsClient {
 
     /**
      * Send attempt to Result Service for evaluation.
-     * bearerToken forwarded if provided.
      */
     public ResultDTO evaluateAttempt(Attempt attempt, String bearerToken) {
         try {

@@ -1,6 +1,7 @@
 package com.abhishek.candidateService.servcie;
 
 import com.abhishek.candidateService.client.AdminClient;
+import com.abhishek.candidateService.dto.TestDTO;
 import com.abhishek.candidateService.dto.TestWithStatusDTO;
 import com.abhishek.candidateService.model.Answer;
 import com.abhishek.candidateService.model.Attempt;
@@ -29,20 +30,13 @@ public class AttemptService {
     private final AdminClient adminClient;
     private final ResultsClient resultsClient;
 
-    /**
-     * Optimized version: Fetches all attempts once instead of N+2 queries
-     * Old: 1 query for tests + N queries for completed + N queries for in-progress
-     * = O(2N+1)
-     * New: 1 query for tests + 3 queries for attempts = O(4) constant time
-     * Uses Set instead of Map for better memory efficiency and semantic clarity
-     */
     public List<TestWithStatusDTO> getTestsWithStatus(String candidateId, String bearerToken) {
         log.info("Fetching tests with status for candidate: {}", candidateId);
 
-        var tests = adminClient.getAssignedTests(candidateId, bearerToken);
+        List<TestDTO> tests = adminClient.getAssignedTests(candidateId, bearerToken);
         log.debug("Retrieved {} assigned tests", tests.size());
 
-        // Optimization: Fetch all attempts for this candidate once
+        // Fetch all attempts for this candidate once
         List<Attempt> inProgressAttempts = attemptRepository.findByCandidateIdAndStatus(candidateId,
                 Status.IN_PROGRESS);
         List<Attempt> submittedAttempts = attemptRepository.findByCandidateIdAndStatus(candidateId, Status.SUBMITTED);
@@ -51,7 +45,7 @@ public class AttemptService {
         log.debug("Retrieved {} in-progress, {} submitted, and {} timed-out attempts for candidate: {}",
                 inProgressAttempts.size(), submittedAttempts.size(), timedOutAttempts.size(), candidateId);
 
-        // Build sets for O(1) lookup - more efficient than Map<String, Boolean>
+        // Build sets for O(1) lookup
         Set<String> inProgressTests = inProgressAttempts.stream()
                 .map(Attempt::getTestId)
                 .collect(Collectors.toSet());
@@ -60,20 +54,17 @@ public class AttemptService {
         submittedAttempts.forEach(attempt -> completedTests.add(attempt.getTestId()));
         timedOutAttempts.forEach(attempt -> completedTests.add(attempt.getTestId()));
 
-        List<TestWithStatusDTO> testsWithStatus = tests.stream().map(testObj -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> testData = (Map<String, Object>) testObj;
-
+        List<TestWithStatusDTO> testsWithStatus = tests.stream().map(test -> {
             TestWithStatusDTO testWithStatus = new TestWithStatusDTO();
-            testWithStatus.setId((String) testData.get("id"));
-            testWithStatus.setName((String) testData.get("name"));
-            testWithStatus.setDescription((String) testData.get("description"));
-            testWithStatus.setDurationMinutes((Integer) testData.get("durationMinutes"));
-            testWithStatus.setActive((Boolean) testData.get("active"));
-            testWithStatus.setScheduled((Boolean) testData.get("scheduled"));
+            testWithStatus.setId(test.id);
+            testWithStatus.setName(test.name);
+            testWithStatus.setDescription(test.description);
+            testWithStatus.setDurationMinutes(test.durationMinutes);
+            testWithStatus.setActive(test.active);
+            testWithStatus.setScheduled(test.scheduled);
 
-            String testId = (String) testData.get("id");
-            // O(1) lookup using Set.contains() - cleaner and more efficient than Map
+            String testId = test.id;
+            // O(1) lookup using Set.contains() for checking status
             testWithStatus.setCompleted(completedTests.contains(testId));
             testWithStatus.setInProgress(inProgressTests.contains(testId));
             return testWithStatus;

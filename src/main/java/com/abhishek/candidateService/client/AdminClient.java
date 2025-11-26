@@ -28,7 +28,7 @@ public class AdminClient {
      * Fetch assigned tests for a candidate from Admin Service.
      * Returns empty list if not found or error occurs.
      */
-    public List<?> getAssignedTests(String candidateId, String bearerToken) {
+    public List<TestDTO> getAssignedTests(String candidateId, String bearerToken) {
         log.debug("Fetching assigned tests for candidate: {}", candidateId);
 
         try {
@@ -40,7 +40,7 @@ public class AdminClient {
             }
 
             var response = request.retrieve()
-                    .body(new ParameterizedTypeReference<ApiResponse<List>>() {
+                    .body(new ParameterizedTypeReference<ApiResponse<List<TestDTO>>>() {
                     });
 
             if (response != null && response.getData() != null) {
