@@ -124,37 +124,54 @@ public class AdminClient {
                 throw new RuntimeException("Failed to fetch questions by IDs", exception);
             }
         }
-        // Else fetch by category
-        else if (test.categoryIds != null && !test.categoryIds.isEmpty()) {
-            log.debug("Fetching questions by {} categories for test: {}",
-                    test.categoryIds.size(), test.id);
+        // Else fetch by category-Commented so that only manual question selection is possible
+        /*
+         * else if (test.categoryIds != null && !test.categoryIds.isEmpty()) {
+         * log.debug("Fetching questions by {} categories for test: {}",
+         * test.categoryIds.size(), test.id);
+         *
+         * for (String categoryId : test.categoryIds) {
+         * try {
+         * var request = adminRestClient.get()
+         * .uri(uriBuilder -> uriBuilder.path("/admin/questions")
+         * .queryParam("categoryId", categoryId)
+         * .build());
+         *
+         * if (bearerToken != null) {
+         * request = request.headers(headers -> headers.setBearerAuth(bearerToken));
+         * }
+         *
+         * var response = request.retrieve()
+         * .body(new ParameterizedTypeReference<ApiResponse<QuestionDTO[]>>() {
+         * });
+         *
+         * if (response != null && response.getData() != null) {
+         * questions.addAll(Arrays.asList(response.getData()));
+         * }
+         * } catch (Exception exception) {
+         * log.warn("Failed to fetch questions for category: {}, continuing...",
+         * categoryId, exception);
+         * }
+         * }
+         * log.debug("Fetched total {} questions by categories for test: {}",
+         * questions.size(), test.id);
+         * }
+         */
 
-            for (String categoryId : test.categoryIds) {
-                try {
-                    var request = adminRestClient.get()
-                            .uri(uriBuilder -> uriBuilder.path("/admin/questions")
-                                    .queryParam("categoryId", categoryId)
-                                    .build());
+        // Group by category and shuffle within groups
+        Map<String, List<QuestionDTO>> questionsByCategory = questions.stream()
+                .collect(Collectors.groupingBy(q -> q.categoryId != null ? q.categoryId : "uncategorized"));
 
-                    if (bearerToken != null) {
-                        request = request.headers(headers -> headers.setBearerAuth(bearerToken));
-                    }
+        List<QuestionDTO> shuffledQuestions = new ArrayList<>();
+        List<String> categories = new ArrayList<>(questionsByCategory.keySet());
 
-                    var response = request.retrieve()
-                            .body(new ParameterizedTypeReference<ApiResponse<QuestionDTO[]>>() {
-                            });
-
-                    if (response != null && response.getData() != null) {
-                        questions.addAll(Arrays.asList(response.getData()));
-                    }
-                } catch (Exception exception) {
-                    log.warn("Failed to fetch questions for category: {}, continuing...",
-                            categoryId, exception);
-                }
-            }
-            log.debug("Fetched total {} questions by categories for test: {}",
-                    questions.size(), test.id);
+        for (String category : categories) {
+            List<QuestionDTO> categoryQuestions = questionsByCategory.get(category);
+            Collections.shuffle(categoryQuestions, random);
+            shuffledQuestions.addAll(categoryQuestions);
         }
+
+        questions = shuffledQuestions;
 
         // Map to snapshots and randomize options
         List<QuestionSnapshot> snapshots = questions.stream().map(question -> {
